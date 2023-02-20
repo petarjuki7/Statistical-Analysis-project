@@ -1,0 +1,601 @@
+---
+title: "Projekt"
+author: "Sap-projekt"
+date: '17 01 2021 '
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+<font size="10">Analiza uspješnosti dioničkih fondova:</font>
+
+
+<font size="5">Opis projekta:</font>
+<br>
+Ovaj projekt obavezni je dio izbornog kolegija Statistička analiza podataka Fakulteta elektrotehnike i računarstva.
+Projekt je poslužio primjeni teorijskih temelja stečenih na predavanjima na skup podataka iz stvarnog svijeta. 
+Kao pomoć u izradi projekta poslužio je programski jezik R koji je pružio potporu za izvođenje testiranja i bolju
+vizualizaciju podataka.
+<br>
+<br>
+<font size="5">Skup podataka:</font>
+<br>
+Korišteni skup podataka sastoji se od velikog broja dioničkih fondova koji su dostupni američkim investitorima i izraženi su
+u američkim dolarima. U daljnjem tekstu ćesto će se pojavljivati izraz "uspješnost fonda". Kao uspješnost fonda
+korišten je srednji povrat fonda u razdoblju od deset godina. Iako je uspješnost moguće definirati na više načina,
+ovaj je odabran kao standardan način prilikom početka rada na projektu te je kao takav zadržan.
+
+
+<font size="5">Deskriptivna statistika skupa podataka:</font>
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+data = read.csv("mutual_funds.csv")
+#data = na.omit(data)
+```
+
+Za glavni kriterij uspješnosti određenog fonda uzimamo srednji godišnji povrat za zadnjih 10 godina. Premda da imamo podatke i o srednjem prošlogodišnjem povratu te srednjem povratu za zadnjih 3 i 5 godina, srednji povrat za 10 godina nam najbolje pokazuje koliko je određeni fond pouzdan/dobar/uspješan jer nam daje podatke o najdužem periodu. Na sljedećem pravokutnom dijagramu prikazani su srednji povrat za 3, 5 i 10 godina. (još malo nadopunit....) 
+
+```{r}
+success10 = data$fund_mean_annual_return_10years
+success5 = data$fund_mean_annual_return_5years
+success3 = data$fund_mean_annual_return_3years
+boxplot(success10, success5, success3, main="Fund mean annual return", names=c("10 yrs", "5 yrs", "3 yrs"), ylab="Percentage")
+```
+Sljedeći graf prikazuje udjele određenog stila investiranja, u podatcima koje koristimo fondovi imaju 3 različita stila investiranja; Growth, Value, Blend. (mozda u kratko objasnit sta koji znaci)
+```{r}
+investment = data$investment[data$investment != "<undefined>"]
+growth.number = sum(investment == "Growth")
+value.number = sum(investment == "Value")
+blend.number = sum(investment == "Blend")
+values = c(growth.number, value.number, blend.number)
+labels = c("Growth", "Value", "Blend")
+pct = round(values/sum(values)*100)
+labels = paste(labels, pct)
+labels = paste(labels,"%")
+pie(values, labels=labels, col=rainbow(length(labels)))
+
+```
+```{r}
+materials = data$basic_materials
+financial = data$financial_services
+cyclical = data$consumer_cyclical
+estate = data$real_estate
+defensive = data$consumer_defensive
+healthcare = data$healthcare
+utilities = data$utilities
+communication = data$communication_services
+energy = data$energy
+industrials = data$industrials
+technology = data$technology
+labels = c("Basic materials",
+           "Financial services",
+           "Consumer cyclical",
+           "Real estate",
+           "Consumer defensive",
+           "Healthcare",
+           "Utilities",
+           "Communication services",
+           "Energy",
+           "Industrials",
+           "Technology")
+boxplot(materials,
+        financial,
+        cyclical,
+        estate,
+        defensive,
+        healthcare,
+        utilities,
+        communication,
+        energy,
+        industrials,
+        technology,
+        names=labels,
+        ylab="Percentage",
+        las = 2)
+```
+```{r}
+hist(success10, col=rgb(1,0,0,0.5), main="Histogram of distribution of succes for differrent intervals")
+hist(success5, col=rgb(0,1,0,0.5),add=T)
+hist(success3, col=rgb(0,0,1,0.5),add=T)
+legend("topright", c("10 years", "5 years", "3 years"), fill=c("red", "green", "blue"))
+box()
+```
+
+
+
+
+<font size="5">Statističko zaključivanje(mozda neki drugi naslov):</font>
+
+Kao što je već spomenuto svaki fond ima određeni stil investiranja (Growth, Blend, Value). Zanima nas razlikuju li se uspješnosti fondova s obzirom na stil investiranja koji odabiru, odnosno želimo provijeriti imaju li fodnovi s određenim stilom investiranja veće povrate nego ostali. Za početak želimo vidjeti ravnaju li se povrati svake od tih kategorija po normalnoj razdiobi kako bi mogli primjeniti anovu, test o jednakosti sredina.
+
+```{r}
+data_blend <- data[data$investment == c("Blend"),]
+hist(data_blend$fund_mean_annual_return_10years)
+qqnorm(data_blend$fund_mean_annual_return_10years, main="Srednji povrat za zadnjih 10 godina za Blend")
+qqline(data_blend$fund_mean_annual_return_10years, col="blue")
+
+#ks.test(data_blend$fund_mean_annual_return_10years, "pnorm")
+
+data_growth <- data[data$investment == c("Growth"),]
+hist(data_growth$fund_mean_annual_return_10years)
+qqnorm(data_growth$fund_mean_annual_return_10years, main="Srednji povrat za zadnjih 10 godina za Growth")
+qqline(data_growth$fund_mean_annual_return_10years, col="blue")
+
+#ks.test(data_growth$fund_mean_annual_return_10years, "pnorm")
+
+
+data_value <- data[data$investment == c("Value"),]
+hist(data_value$fund_mean_annual_return_10years)
+qqnorm(data_value$fund_mean_annual_return_10years, main="Srednji povrat za zadnjih 10 godina za Value")
+qqline(data_value$fund_mean_annual_return_10years, col="blue")
+
+#ks.test(data_value$fund_mean_annual_return_10years, "pnorm")
+
+```
+Iz grafova možemo zaključiti da distribucija ne odstupa drastično od normalne. Uz pretpostavku normalnosti i nezavisnosti podataka TE JEDNAKOSTI VARIJANCI !! možemo provesti anova test.(sta radit s jednakosti varijaci???? bartlet vraca jako malu p vrijednost)
+
+```{r}
+data_growth_filtered <- na.omit(data_growth$fund_mean_annual_return_10years)
+data_blend_filtered <- na.omit(data_blend$fund_mean_annual_return_10years)
+data_value_filtered <- na.omit(data_value$fund_mean_annual_return_10years)
+
+var(data_growth_filtered)
+var(data_blend_filtered)
+var(data_value_filtered)
+```
+
+prikažimo box plot za te tri kategorije. Vidimo da su sredine prilično slične dakle možemo se pitat jesu li iste. Budući da se ravnaju po normalnoj te uz pretpostavku nezavisnosti podataka i jednakosti varijanci možemo provesti anova test.
+Pretpostavka H0 je da su sredine te 3 kategorije jednake.
+```{r}   
+bartlett.test(data$fund_mean_annual_return_10years ~ data$investment)##dal ga provodit??
+
+boxplot(data$fund_mean_annual_return_10years[data$investment != "<undefined>"] ~ data$investment[data$investment != "<undefined>"],
+        ylab= "srednji godišnji povrat",
+        xlab= "Stil investiranja")
+
+res.aov <- aov(fund_mean_annual_return_10years ~ factor(investment), data = data)
+summary(res.aov)
+
+kruskal.test(data$fund_mean_annual_return_10years ~ data$investment, data = data)
+```
+
+Iz rezultata anove definitivno možemo zaključiti da sredine tih uzoraka nisu jednake te odbacit H0 u korist tvrdnje da su sredine različite.
+Anova nam samo govori da su njihove međusobne sredine različite no nas naravno zanima koja od te 3 kategorije prosjcno ima najveci povrat. Iz box plota se može vidjeti da Growth ima nesto veću sredinu nego ostale dvije kategorije te da blend ima mozda malo veću sredinu nego value. Dakle provodimo t test kako bi vidjeli ima li Growth veću sredinu od blenda. Pretpostavke t testa su normalnost i nezavisnot koje smo već potvrdili prije.
+Prvo nas zanima jesu li varijance kategorija jednake, da bismo to saznali provodima test o jednakosti varijanci.
+
+```{r}
+var.test(data_growth_filtered, data_blend_filtered)
+
+```
+Vidimo da nam test daje p-vrijednost = 0.0686 (ako ommitamo na pocetku ispada 0.0049, treba vidit sta je bolje??)što znači da na razini značajnosti 0.05 ne možemo odbaciti da su varijance jednake. Budući da su varijance jednake radimo t-test za dvije populacije koje imaju jednake varijance.
+
+```{r}
+t.test(data_growth$fund_mean_annual_return_10years, data_blend$fund_mean_annual_return_10years, alt = "greater", var.equal = TRUE)
+```
+ZAKLJUCAK!!:
+Vidimo da je p-vrijednost izuzetno mala, što nam govori u prilog odbacivanja nulte hipoteze o jednakosti sredina. Možemo zaključiti da kategorija growth ima veći povrat od kategorije blend, pri čemu je srednja vrijednost prve 1.2171, a druge 1.1069
+
+
+
+
+
+
+
+1.1 P/E ratio
+GLEDAMO UTJECE LI STIL INVESTIRANJA NA P/E RATIO -> PRETPOSTAVKA JE DA BI TREBAO UTJECATI.
+Pretpostavke za anovu normalnost, nezavisnost i jednakost varijanci...
+
+```{r}
+data_blend <- data[data$investment == c("Blend"),]
+hist(data_blend$price_earnings)
+qqnorm(data_blend$price_earnings, main="p/e ratio")
+qqline(data_blend$price_earnings, col="blue")
+
+#ks.test(data_blend$price_earnings, "pnorm")
+
+data_growth <- data[data$investment == c("Growth"),]
+hist(data_growth$price_earnings)
+qqnorm(data_growth$price_earnings, main="p/e ratio")
+qqline(data_growth$price_earnings, col="blue")
+
+#ks.test(data_growth$fund_mean_annual_return_10years, "pnorm")
+
+
+data_value <- data[data$investment == c("Value"),]
+hist(data_value$price_earnings)
+qqnorm(data_value$price_earnings, main="p/e ratio")
+qqline(data_value$price_earnings, col="blue")
+```
+Vidimo da se prvi histogram i qqplot bitno razlikuju od ocekivanog za normalnu razdiobu s toga je mozda pametnije koristit kruskal-wallis(ovdje anova i kruskal-wallis)
+
+```{r}
+boxplot(data$price_earnings[data$investment != "<undefined>"] ~ data$investment[data$investment != "<undefined>"],
+        ylab= "p/e ratio",
+        xlab= "Stil investiranja")
+
+##res.aov <- aov(price_earnings ~ factor(investment), data = data)
+##summary(res.aov)
+
+
+kruskal.test(data$price_earnings ~ data$investment, data = data)
+```
+Možemo vidjeti da nam anova(i kruskal-wallis) i ovdje sugerira da možemo odbaciti nultu hipotezu da su sredine jednake te možemo zaključiti da se one razlikuju. Može nas zanimati koja koategorija ima najmanji P/E ratio, odnosno koja kategorija ima najmanji omjer cijene dionice i zarade po dionici.
+
+```{r}
+var(data_value$price_earnings)
+var(data_blend$price_earnings)
+
+var.test(data_value$price_earning, data_blend$price_earning)
+```
+(velika razlika u varijanci provjeri dal se radi o nekim velikim outlierima??)
+Na prvi pogled možemo zaključit da varijance nisu jednake, a to nam i potvrđuje test o jednakosti varijanci. Sada provodimo t-test. Jel oke proveden??
+```{r}
+t.test(data_blend$price_earnings, data_value$price_earnings, alt = "greater", var.equal = FALSE)
+```
+ZAKLJUCAK!!:
+T test nam govori da kategorija value ima manji p/e ratio(malo objasnit, proširit)
+
+
+2.KATERGORIJA INVESTIRANJA
+GLEDAMO IMA LI RAZLIKE U POVRATU S OBZIROM NA KATEGORIJU INVESTIRANJA
+
+
+```{r} 
+#ima oko 50 kategorija, neznam dal ova anova ima smisla opce
+res.aov <- aov(fund_mean_annual_return_10years ~ factor(category), data = data)
+summary(res.aov)
+
+data_cat <- data$category
+as.data.frame(table(data_cat))
+```
+Anova nam ukazuje na to da kategorije nemaju jednaku sredinu, možemo odbaciti hipotezu o jednakosti sredina u korist alternativne hipoteze, a to je da su sredine različite. Budući da postoje 53 različite kategorije, uzeli smo one kategorije u koje puno fondova priprada. Najviše njih pripada u kategorije Large Blend, Large Value, Large Growth, Small Blend, Small Value, Small Growth koje većinom imaju iste stilove (Blend, Growth, Value) koje smo već proučavali gore. Pa ćemo ovjde odabrati neke druge zanimljive kategorije koje također imaju puno fondova.(World Large Stock, Technology, Real Estate)
+
+
+```{r}
+filtered_by_categories <- data[data$category == "World Large Stock" | data$category == "Technology" | data$category == "Real Estate",]
+
+boxplot(filtered_by_categories$fund_mean_annual_return_10years ~ filtered_by_categories$category,
+        ylab = "srednji godišnji povrat",
+        xlab = "kategorije")
+
+```
+
+```{r}
+data_re <- data[data$category == c("Real Estate"),]
+hist(data_re$fund_mean_annual_return_10years)
+qqnorm(data_re$fund_mean_annual_return_10years, main="srednji godišnji povrat 10 godina")
+qqline(data_re$fund_mean_annual_return_10years, col="blue")
+
+#ks.test(data_blend$fund_mean_annual_return_10years, "pnorm")
+
+data_tech <- data[data$category == c("Technology"),]
+hist(data_tech$fund_mean_annual_return_10years)
+qqnorm(data_tech$fund_mean_annual_return_10years, main="srednji godišnji povrat 10 godina")
+qqline(data_tech$fund_mean_annual_return_10years, col="blue")
+
+#ks.test(data_growth$fund_mean_annual_return_10years, "pnorm")
+
+
+data_wls <- data[data$category == c("World Large Stock"),]
+hist(data_wls$fund_mean_annual_return_10years)
+qqnorm(data_wls$fund_mean_annual_return_10years, main="srednji godišnji povrat 10 godina")
+qqline(data_wls$fund_mean_annual_return_10years, col="blue")
+
+```
+
+Iz priloženih grafova čini se da podatci ne odskaču drastično od normalne distribucije. Uz pretpostavku nezavisnosti podataka, normalnosti te jednakosti varijanci, možemo provesti anova test.
+
+```{r}
+data_re_filtered <- na.omit(data_re$fund_mean_annual_return_10years)
+data_tech_filtered <- na.omit(data_tech$fund_mean_annual_return_10years)
+data_wls_filtered <- na.omit(data_wls$fund_mean_annual_return_10years)
+
+var(data_re_filtered)
+var(data_tech_filtered)
+var(data_wls_filtered)
+
+res.aov <- aov(fund_mean_annual_return_10years ~ factor(category), data = filtered_by_categories)
+summary(res.aov)
+```
+Anova nam govori u prilog alternativne hipoteze, a to je da su sredine te tri kategorije različite. Iz box plota se vidi da su sredine kategorija Real Estate i Technology iznad sredine od World Large Stock, stoga ćemo uz pomoć test testa provjerit imaju li Real Estate i Technology jednake srednje povrate.
+
+```{r}
+var.test(data_re_filtered, data_tech_filtered)
+```
+
+Test o jednakosti varijanci odbacuje da su varijance jednake stoga provodimo t-test za nezavisne uzorke za populacije s različitim varijancama.
+
+```{r}
+t.test(data_tech$fund_mean_annual_return_10years, data_re$fund_mean_annual_return_10years, alt = "greater", var.equal = FALSE)
+```
+T-test nam vraća p-vrijednost = 0,09697 što znači da ne možemo odbaciti nultu hipotezu da su sredine te dvije skupine jednake.
+
+```{r}
+plot(data$net_annual_expense_ratio_fund, data$fund_mean_annual_return_10years, col = "red")
+abline(lm(data$fund_mean_annual_return_10years~data$net_annual_expense_ratio_fund), col="red")
+plot(data$net_annual_expense_ratio_fund, data$fund_mean_annual_return_5years, col = "blue")
+abline(lm(data$fund_mean_annual_return_5years~data$net_annual_expense_ratio_fund), col="blue")
+plot(data$net_annual_expense_ratio_fund, data$fund_mean_annual_return_3years, col = "chartreuse")
+abline(lm(data$fund_mean_annual_return_3years ~ data$net_annual_expense_ratio_fund), col="chartreuse")
+boxplot(data$fund_mean_annual_return_10years, data$fund_mean_annual_return_5years, data$fund_mean_annual_return_3years)
+```
+Podaci ne pokazuju nešto pretjerano pametno. Srednji povrat u zadnjih 10 godina regresija pokazuje pad povrata s obzirom na cijenu fonda.
+To nema smisla. Postoji li koji bolji način za određivanje uspješnosti? Čini se kako skuplji fondovi ne pružaju veću uspješnost, ali
+garantiraju veću stabilnost.
+```{r}
+qqplot(data$net_annual_expense_ratio_fund, data$fund_mean_annual_return_10years, col = "red")
+plot(residuals(lm(data$fund_mean_annual_return_10years~data$net_annual_expense_ratio_fund), col="red"))
+qqplot(data$net_annual_expense_ratio_fund, data$fund_mean_annual_return_5years, col = "blue")
+plot(residuals(lm(data$fund_mean_annual_return_5years~data$net_annual_expense_ratio_fund), col="blue"))
+qqplot(data$net_annual_expense_ratio_fund, data$fund_mean_annual_return_3years, col = "chartreuse")
+plot(residuals(lm(data$fund_mean_annual_return_3years ~ data$net_annual_expense_ratio_fund), col="chartreuse"))
+```
+
+
+
+Regresija ne daje neke odgovore na to mijenja li se udio ulaganja u pojedine sektore u odnosu na godine osnivanja fonda.
+Jedinu zamjetnu razliku pokazuje sektor nekretnina kod kojega je krivulja rastuća prema 2000 godini pad udjela za zdravstvo.
+
+
+
+H0: razlika je jednaka za skuplje i jeftinije fondove
+H1: razlika je manja za skuplje fondove
+```{r}
+data1 = data.frame(data$fund_mean_annual_return_10years, data$fund_mean_annual_return_5years, data$fund_mean_annual_return_3years)
+data2 = data.frame(data$net_annual_expense_ratio_fund)
+data2$Min <-apply(data1,1,FUN=min)
+data2$Max <-apply(data1,1,FUN=max)
+diff = data2$Max - data2$Min
+model = lm(diff ~ data2$data.net_annual_expense_ratio_fund)
+plot(data2$data.net_annual_expense_ratio_fund, diff)
+abline(model, col = "red")
+
+qqnorm(rstandard(model))
+qqline(rstandard(model))
+
+plot(fitted(model), resid(model))
+abline(0,0)
+
+summary(model)
+qqplot(data2$data.net_annual_expense_ratio_fund, diff)
+
+```
+
+
+
+H0: fondovi imaju jednaku uspješnost bez obzira na udio koji ulažu u tehnologiju
+H1: fondovi imaju veću uspješnost ako imaju veći udio ulaganja u tehnologiju
+
+```{r}
+data1 = subset(data, technology > 0)
+uspjesnost = data1$fund_mean_annual_return_10years
+udio_tech = sqrt(data1$technology)
+model = lm(uspjesnost~udio_tech)
+plot(udio_tech, uspjesnost)
+abline(model, col = "red")
+
+qqnorm(rstandard(model))
+qqline(rstandard(model))
+
+summary(model)
+```
+
+
+```{r}
+
+fondovi.data = data[,c("net_assets","fund_mean_annual_return_10years")]
+colnames(fondovi.data) = c("velicina", "povrat")
+
+```
+
+
+```{r}
+fondovi.data = na.omit(fondovi.data)
+summary(fondovi.data)
+```
+
+
+```{r}
+plot(fondovi.data$velicina, fondovi.data$povrat)
+```
+
+
+
+```{r}
+log_velicina = log(fondovi.data$velicina)
+
+plot(log(fondovi.data$velicina), fondovi.data$povrat)
+
+fit.velicine = lm(fondovi.data$povrat~log_velicina)
+
+abline(fit.velicine)
+
+summary(fit.velicine)
+
+```
+
+```{r}
+qqnorm(rstandard(fit.velicine))
+qqline(rstandard(fit.velicine))
+plot(fitted(fit.velicine), resid(fit.velicine))
+```
+
+```{r}
+matrix_coef <- summary(fit.velicine)$coefficients  
+my_estimates <- matrix_coef[ , 1]                   
+my_estimates 
+```
+povrat = 0.3528 + 0.0389 * log velicina fonda
+Za 10 puta veću imovinu pod upravljanjem fonda dobiva se 3.89% posto veći povrat.
+
+
+
+
+```{r include=FALSE}
+funds = data
+```
+
+
+
+
+
+
+Analiziraju se dividende ovisno o stilu investiranja fonda. 
+
+```{r}
+returnsComplete = funds[complete.cases(funds[,c("fund_return_10years","category_return_10years","fund_sharpe_ratio_10years","category_sharpe_ratio_10years","years_up","years_down")]),]
+
+growthFunds = funds[funds$investment == "Growth",]
+valueFunds = funds[funds$investment == "Value",]
+blendFunds = funds[funds$investment == "Blend",]
+
+boxplot(growthFunds$fund_yield,
+        valueFunds$fund_yield,
+        blendFunds$fund_yield, names=c("Growth","Value","Blend"), col=c("Red", "Light green", "Light blue"))
+```
+
+Box plot dividendi po stilu investiranja ukazuje na veliku zakrivljenost kod dividendi Growth fondova. Zbog te činjenice ne možemo koristiti testove koji se oslanjaju na pretpostavku normalnosti. Za analizu jednakosti sredina koristit ćemo Kruskal-Wallisov test umjesto ANOVA testa. Dodatno testiramo razliku dividendi između Value i Blend fondova. Prije samog testiranja razlike provodimo Kolmogorov-Smirnovljev test kako bismo utvrdili možemo li za testiranje razlike koristiti t-test ili moramo koristiti neki od neparametarskih testova. Tvrdnja koju testiramo je jesu li dividende value fondova veće od dividendi blend fondova
+
+```{r}
+kruskal.test(funds$fund_yield~funds$investment, data=funds);
+#jedan od fondova ima različitu dividendu
+
+shapiro.test(valueFunds$fund_yield)
+shapiro.test(blendFunds$fund_yield)
+
+wilcox.test(valueFunds$fund_yield, blendFunds$fund_yield, paired = FALSE, var.equal = FALSE, alternative = "greater")
+
+```
+Kolmogorov-Smirnovljev testovi ukauzju na činjenicu da fondovi nemaju normalnu razdiobu te se stoga koristi neparametarski Wilcoxonov test predznačenih rangova. Navedeni test daje zaključak da value fondovi imaju veće dividende od blend fondova.
+
+
+
+
+Za istraživanje tvrdnje da fondovi pobjeđuju svoje kategorije, analizirali smo povrate fondova i njihovih kategorija nakon 10 godina.
+Boxplot za povrate fondova i kategorija mogao bi ukazivati na činjenicu da su povrati fondova i kategorija jednaki s razlikom u većoj varijaciji kod fondova.
+
+```{r}
+returns_10years = funds[c("fund_return_10years","category_return_10years")]
+ind = which(!is.na(returns_10years$fund_return_10years) & !is.na(returns_10years$category_return_10years))
+returns_10years = returns_10years[ind,]
+
+boxplot(funds$fund_return_10years, funds$category_return_10years, names=c("Fund return","Category return"), col = c("light blue","yellow"))
+```
+Analizom histograma povrata fondova i kategorija uočavaju se blage zakrivljenosti podataka, ali u histogramu razlike povrata fonda i povrata kategorije ne uočava se veća zakrivljenost podataka.
+Za analizu razlike sredina koristit ćemo upareni t-test jer svaki fond ima pridruženu odgovarajuću kategoriju. T-test je robustan na manje zakrivljenosti u podacima te je bolja opcija u odnosu na neparametarske testove (pretežno zbog svoje veličine) kod velikih uzoraka.
+Nulta hipoteza testa je da fondovi imaju manji ili jednak povrat od svojih kategorija.
+Alternativna hipoteza testa je da fondovi imaju veći povrat od svojih kategorija.
+
+```{r}
+hist(returns_10years$fund_return_10years, main="Fund return (10 years)"
+     ,col="cyan"
+     ,xlab = "Fund return")
+hist(returns_10years$category_return_10years, main="Category return (10 years)", col="red", xlab = "Category return")
+hist(returns_10years$fund_return_10years - returns_10years$category_return_10years, main="Fund - category return (10 years)", col="purple", xlab="Fund - category return")
+
+
+
+print("Wilcoxonov test nad razlikom povrata fonda i povrata kategorije u razdoblju od 10 godina.")
+t.test(x = funds$fund_return_10years, 
+            y = funds$category_return_10years, 
+            paired = TRUE,
+            alternative = "greater", 
+            conf.level = 0.99)
+
+
+```
+Zaključak testiranja je da ne možemo odbaciti tvrdnju da fondovi imaju manji ili jednak povrat od svojih kategorija, odnosno nismo uspijeli dokazati da fondovi imaju veći povrat od svojih kategorija.
+
+
+
+Linearnom regresijom provjerit će se ovisi li povrat fonda o povratu kategorije. Drugim riječima analizira se prate li fondovi svoje kategorije u smislu povrata.
+```{r}
+returnsComplete = funds[complete.cases(c("fund_return_10years","category_return_10years")),]
+x = returnsComplete$category_return_10years
+y = returnsComplete$fund_return_10years
+
+fit.return = lm(y~x, data=returnsComplete)
+plot(x, y, main = "Category and fund returns regression", xlab="Category return (10 years)", ylab="Fund return (10 years)")
+lines(x, fit.return$fitted.values, col="red")
+```
+Uočava se potencijalna zavisnost povrata fonda o povratu kategorije te je potrebno provesti analizu reziduala. Također će se odrediti Pearsonov koeficijent korelacije koji će predstalvljati jačinu linearne veze, kao i koeficijent determinacije koji određuje kvalitetu modela
+
+Analiza reziduala:
+```{r}
+qqnorm(rstandard(fit.return))
+qqline(rstandard(fit.return))
+plot(fitted(fit.return), resid(fit.return))
+abline(0,0)
+#c("Koeficijent determinacije: ",rsq(x,y))
+c("Pearsonov koeficijent korelacije:", cor(x,y,method="pearson"))
+summary(fit.return)
+coefficients(fit.return)
+```
+Pearsonov koeficijent i koeficijent determinacije ukazuju na jaku linearnu vezu između povrata kategorije i povrata fonda. Reziduali ne pokazuju nikakvu vezu što je nužno za provođenje zaključaka o linearnog regresiji. Zaključuje se da postoji jaka linearna veza između povrata fondova i povrata njihovih kategorija.
+Procjenjeni koeficijenti iznose: b1 = 0.993893 i b0 = -0.157373. Ovom regresijom ne možemo donositi zaključke pobjeđuje li fond svoju kategoriju, već samo donosimo zaključak da fondovi prate svoje kategorije u smislu povrata.
+
+
+Za provjere hipoteze o pobjeđivanju fondova analizirati će se zavisnost razlike povrata fonda i povrata kategorije o povratu kateogrije. 
+```{r}
+returnsComplete = funds[complete.cases(c("fund_return_10years","category_return_10years")),]
+x = returnsComplete$category_return_10years
+y = returnsComplete$fund_return_10years - returnsComplete$category_return_10years
+
+fit.return = lm(y~x, data=returnsComplete)
+plot(x, y, xlab="Category return (10 years)", ylab="Fund - category return (10 years)")
+lines(x, fit.return$fitted.values, col="red")
+```
+Uočava se vrlo slaba linearna zavisnost između razlike povrata fonda i kategorije te same kategorije.
+
+Analiza reziduala:
+```{r}
+qqnorm(rstandard(fit.return))
+qqline(rstandard(fit.return))
+plot(fitted(fit.return), resid(fit.return))
+abline(0,0)
+#c("Koeficijent determinacije: ",rsq(x,y))
+c("Pearsonov koeficijent korelacije:", cor(x,y,method="pearson"))
+summary(fit.return)
+coefficients(fit.return)
+```
+Pearsonov koeficijent korelacije te koeficijent determinacije svojim niskim vrijednostima ukazuju na gotovo nikakvu linearnu zavisnost između razlike povrata fonda i kategorije i povrata kategorije. Koeficijenti procijenjenog pravca su isto približno jednaki nuli što ukazuje na činjenicu da će razlika povrata fonda i kategorije unutar svake kategorije ravnomjerno varirati, neovisno o povratu kategorije.
+
+
+
+
+#dodati analizu koreliranosti varijabli
+
+
+Višestrukom regresijom pokušati ćemo pronaći kauzalnu vezu između razlike povrata fonda i kategorije i drugih pokazatelja fonda. Parametri koji bi mogli utjecati na razliku povrata fonda i povrata kategorije su: ukupna imovina pod upravljanje (pretpostavljamo da fondovi s većom imovinom pod upravljanje imaju veći vjerojatnost pobijediti svoje kategorije), razlika godišnjeg troška upravljanja fonda i kategorije (fondovi koji uzimaju veći postotak za upravljanje fondom imaju veću vjerojatnost pobijediti svoju kategoiju), medijalna tržišna kapitalizacija (fondovi koji ulažu u tvrtke s većom tržišnom kapitalizacijom će vjerojatnije pobijediti svoje kategorije).
+```{r}
+returnsComplete = funds[complete.cases(funds[,c("fund_return_10years","category_return_10years","fund_sharpe_ratio_10years","category_sharpe_ratio_10years","years_up","net_assets")]),]
+
+x1 = log(returnsComplete$net_assets)
+x2 = returnsComplete$net_annual_expense_ratio_fund - returnsComplete$net_annual_expense_ratio_category
+x3 = returnsComplete$median_market_cap
+
+cor(cbind(x1,x2,x3))
+```
+
+Analiziranjem koreliranosti varijabli primjećuje se slaba koreliranost između varijabli
+
+```{r}
+y = returnsComplete$fund_return_10years - returnsComplete$category_return_10years
+
+
+fit.return = lm(y~x1 + x2 + x3, data=returnsComplete)
+summary(fit.return)
+```
+Uočava se vrlo slaba linearna zavisnost između razlike povrata fonda i kategorije te same samih parametara.
+
+
+
